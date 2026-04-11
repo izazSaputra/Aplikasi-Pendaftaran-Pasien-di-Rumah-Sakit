@@ -10,7 +10,7 @@ public class FormPasienFrame extends JFrame {
     private static final Color BG = new Color(0xF0F4F8);
     private static final Color CARD = Color.WHITE;
     private static final Color PRIMARY = new Color(0x2563EB);
-    private static final Color TEXT = new Color(0x1E293B);
+    private static final Color TEXT = new Color(0x1E2a93B);
     private static final Color BORDER = new Color(0xE2E8F0);
     private static final Map<String, Integer> DURASI = new HashMap<>();
         static {

@@ -46,11 +46,21 @@ public class DataPasienFrame extends JPanel {
         add(header, BorderLayout.NORTH);
 
         // Table
-        String[] cols = {"ID", "Nama Pasien", "Kronis", "BPJS", "Status", "Tgl Keluar", "Sisa Hari"};
+        String[] cols = {"ID", "Nama Pasien", "Kronis", "BPJS", "Status", "Tanggal Masuk", "Estimasi Keluar", "Sisa Hari"};
         model = new DefaultTableModel(cols, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(model);
+        //Lebar kolom
+        table.getColumnModel().getColumn(0).setPreferredWidth(60);   // ID
+        table.getColumnModel().getColumn(1).setPreferredWidth(200);  // Nama Pasien
+        table.getColumnModel().getColumn(2).setPreferredWidth(100);  // Kronis
+        table.getColumnModel().getColumn(3).setPreferredWidth(80);   // BPJS
+        table.getColumnModel().getColumn(4).setPreferredWidth(100);  // Status
+        table.getColumnModel().getColumn(5).setPreferredWidth(130);  // Tgl Masuk
+        table.getColumnModel().getColumn(6).setPreferredWidth(130);  // Tgl Keluar
+        table.getColumnModel().getColumn(7).setPreferredWidth(100);  // Sisa Hari
+        
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setRowHeight(28);
         table.setGridColor(BORDER);
@@ -60,7 +70,11 @@ public class DataPasienFrame extends JPanel {
         table.getTableHeader().setBackground(new Color(0xF8FAFC));
         table.getTableHeader().setReorderingAllowed(false);
 
-        JScrollPane sp = new JScrollPane(table);
+        JScrollPane sp = new JScrollPane(
+    table,
+    JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+    JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         sp.setBorder(BorderFactory.createLineBorder(BORDER));
         sp.getViewport().setBackground(CARD);
         add(sp, BorderLayout.CENTER);
@@ -79,25 +93,37 @@ public class DataPasienFrame extends JPanel {
             Connection conn = Koneksi.getConnection();
             PreparedStatement pst = conn.prepareStatement(
                 "SELECT p.id_pendaftaran, p.nama_pasien, p.level_kronis, p.bpjs, " +
-                "ri.status, ri.tanggal_keluar FROM pendaftaran p " +
+                "ri.status, ri.tanggal_keluar, ri.tanggal_masuk FROM pendaftaran p " +
                 "LEFT JOIN rawat_inap ri ON ri.id_pendaftaran=p.id_pendaftaran AND ri.status='aktif' " +
                 "WHERE p.nama_pasien LIKE ? ORDER BY p.id_pendaftaran DESC");
             pst.setString(1, "%" + keyword + "%");
             ResultSet rs = pst.executeQuery();
             while (rs.next()) {
                 String status = rs.getString("status");
-                String tgl = "-", sisa = "-";
+                String tglMasuk = "-", tglKeluar = "-", sisa = "-";
                 if ("aktif".equals(status)) {
-                    java.sql.Date d = rs.getDate("tanggal_keluar");
-                    tgl = d.toString();
-                    long s = ChronoUnit.DAYS.between(LocalDate.now(), d.toLocalDate());
-                    sisa = s <= 0 ? "Habis" : s + " hari";
-                } else { status = "-"; }
+    java.sql.Date masuk = rs.getDate("tanggal_masuk");
+    java.sql.Date keluar = rs.getDate("tanggal_keluar");
+
+    if (masuk != null) tglMasuk = masuk.toString();
+    if (keluar != null) {
+        tglKeluar = keluar.toString();
+        long s = ChronoUnit.DAYS.between(LocalDate.now(), keluar.toLocalDate());
+        sisa = s <= 0 ? "Habis" : s + " hari";
+    }
+} else {
+    status = "-";
+}
                 model.addRow(new Object[]{
-                    rs.getInt("id_pendaftaran"), rs.getString("nama_pasien"),
-                    rs.getString("level_kronis"), rs.getBoolean("bpjs") ? "Ya" : "Tidak",
-                    status, tgl, sisa
-                });
+    rs.getInt("id_pendaftaran"),
+    rs.getString("nama_pasien"),
+    rs.getString("level_kronis"),
+    rs.getBoolean("bpjs") ? "Ya" : "Tidak",
+    status,
+    tglMasuk,
+    tglKeluar,
+    sisa
+});
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -117,13 +143,15 @@ public class DataPasienFrame extends JPanel {
             pst.setInt(1, id);
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
-                PreparedStatement p2 = conn.prepareStatement("UPDATE rawat_inap SET status='selesai' WHERE id_rawat=?");
+                PreparedStatement p2 = conn.prepareStatement("UPDATE rawat_inap " +
+                        "SET status='selesai', tanggal_dikeluarkan=NOW() " +
+                        "WHERE id_rawat=?");
                 p2.setInt(1, rs.getInt("id_rawat")); p2.executeUpdate();
-                PreparedStatement p3 = conn.prepareStatement("UPDATE kamar SET status_kamar='kosong' WHERE id_kamar=?");
+                PreparedStatement p3 = conn.prepareStatement("UPDATE kamar SET status_kamar='kosong'" +" WHERE id_kamar=?");
                 p3.setInt(1, rs.getInt("id_kamar")); p3.executeUpdate();
                 JOptionPane.showMessageDialog(this, "Pasien " + nama + " dikeluarkan.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
                 loadData("");
-                // Refresh dashboard supaya "Keluar Hari Ini" langsung update
+                // Refresh dashboard
                 for (Window w : Window.getWindows()) {
                     if (w instanceof DashboardFrame) {
                         ((DashboardFrame) w).showHome();

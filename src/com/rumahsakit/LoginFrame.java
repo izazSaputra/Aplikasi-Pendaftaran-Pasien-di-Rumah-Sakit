@@ -1,4 +1,4 @@
-package com.rumahsakit;
+/*package com.rumahsakit;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -107,6 +107,126 @@ public class LoginFrame extends JFrame {
             g2.setColor(c); g2.drawRoundRect(x, y, w-1, h-1, r*2, r*2); g2.dispose();
         }
         public Insets getBorderInsets(Component c) { return new Insets(r, r, r, r); }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
+    }
+}*/
+package com.rumahsakit;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.sql.*;
+
+public class LoginFrame extends JFrame {
+
+    private JTextField txtUsername;
+    private JPasswordField txtPassword;
+
+    public LoginFrame() {
+        setTitle("Login Admin Rumah Sakit");
+        setSize(400, 300);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setResizable(false);
+
+        initUI();
+    }
+
+    public static void styleField(JComponent f) {
+    f.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+    f.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(new Color(0xE2E8F0)),
+        BorderFactory.createEmptyBorder(6, 10, 6, 10)
+    ));
+}
+    
+    private void initUI() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(new EmptyBorder(20, 30, 20, 30));
+        panel.setBackground(Color.WHITE);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JLabel title = new JLabel("LOGIN ADMIN", SwingConstants.CENTER);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        panel.add(title, gbc);
+
+        gbc.gridwidth = 1;
+
+        // Username
+        gbc.gridy++;
+        panel.add(new JLabel("Username"), gbc);
+
+        txtUsername = new JTextField();
+        gbc.gridx = 1;
+        panel.add(txtUsername, gbc);
+
+        // Password
+        gbc.gridx = 0;
+        gbc.gridy++;
+        panel.add(new JLabel("Password"), gbc);
+
+        txtPassword = new JPasswordField();
+        gbc.gridx = 1;
+        panel.add(txtPassword, gbc);
+
+        // Button
+        JButton btnLogin = new JButton("Login");
+        btnLogin.setBackground(new Color(37, 99, 235));
+        btnLogin.setForeground(Color.WHITE);
+        btnLogin.setFocusPainted(false);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.gridwidth = 2;
+        panel.add(btnLogin, gbc);
+
+        add(panel);
+
+        // Event
+        btnLogin.addActionListener(e -> login());
+        txtPassword.addActionListener(e -> login());
+    }
+
+    private void login() {
+        String user = txtUsername.getText().trim();
+        String pass = new String(txtPassword.getPassword());
+
+        if (user.isEmpty() || pass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Username dan password wajib diisi!");
+            return;
+        }
+
+        try {
+            Connection conn = Koneksi.getConnection();
+            PreparedStatement pst = conn.prepareStatement(
+                "SELECT * FROM admin WHERE username=? AND password=?"
+            );
+            pst.setString(1, user);
+            pst.setString(2, pass);
+
+            ResultSet rs = pst.executeQuery();
+
+            if (rs.next()) {
+                JOptionPane.showMessageDialog(this, "Login berhasil!");
+                new DashboardFrame().setVisible(true);
+                dispose();
+            } else {
+                JOptionPane.showMessageDialog(this, "Login gagal!");
+            }
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
     }
 
     public static void main(String[] args) {
